@@ -4,7 +4,7 @@ set -ev
 
 action="$1"
 file_1="$2"
-file_2="$2"
+file_2="$3"
 
 if [ -z "$action" ]; then
   echo "Action is empty.. apply & delete are your options"
