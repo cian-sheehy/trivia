@@ -1,11 +1,12 @@
 FROM golang:alpine
 
-# Set necessary environmet variables needed for our image
-ENV GO111MODULE=on \
-    CGO_ENABLED=0 \
-    GOOS=linux \
-    GOARCH=amd64
+# make app directory
+RUN mkdir /app
+ADD . /app
+WORKDIR /app
 
-COPY . .
+# build the app
+RUN go build -o main .
 
-EXPOSE 3000
+# entry command
+CMD ["/app/main"]

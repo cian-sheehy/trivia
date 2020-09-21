@@ -1,0 +1,48 @@
+language: go
+
+env:
+  matrix:
+    - tf_version=0.13.3 aws_version=2.0.30
+  global:
+    - secure: CtDrGwbs1GqwpNtkur3zRkjYWaTwowqAkEswroMFpdYW71UJxygDuwAmFXokqfb18jUvpxOzlc0qlPgTgcTZxbDS/MmxH9iv5utJGA10XtZtU8xVSLiu0TyK7z3jdmDh77ziplk0FpnXZKpP/bh4cKUXkncbLHyAGT+kw7usVobrjNYBm5l94dBc5KERWCNaG/Lvdr1yNaQURkl/19uM0ftgrFn6MbR8tV53RgcEQzQq6Gpc2+KB7LfKNW1ahWoMjqujb9ic0R3tibuULXf1s3uhAvND82F24UihlnEMS4ZVOf625tIjrK7xWHl1UPkItgd0wYEGyCJIUM+UlBINXZgb6ctkhokt8XtsjMDLdc5IUAJcvp3xzgIFM6xrhmWxYibmKIhMKdUahVHflYPh0KflyimsaYW38plm5saAkMImSBrr7/T8PP6ejp8gOV3hFBWLyceDM9KnxCoOnWsXtvQdrqUBzSHLXzD/OkWohzAq01y+3s0zhknck3iWuKkMDG3zbkqFHCjhkzEJE5TFOEvVcm5bwYVZUnAcIEjuraPvZeQK2ax52k2NX064ebTc1fy8jpZizqfMkNebaukR6SbHpUSA69ZNBl4+juXDgijZaHuV4ZZEI8MRV6Tq3AdrOeWdXHWMETiYATDKxVB+hW27f+gSWG3PjPqV9l4zOzE=
+    - secure: jNaPBld5FTa9wwWz506rOZ6EMOYyKYLaHTZKWgQ4YLYTlZ33EtVuGtclItMiFl6sfnmT0ihVrrUtzI7HCyH5PJv9IWPKlzCST1xsOE7pMMEB11Z2ROWPMCV+p24Rwav2xTnQYm5uHd6chunMqvXbVgCUQ8+x9vWHPW4JLLMMLMzUfSCi6W58NEfeDk1AJF2KrnAU7v3JYvC7bQUPfNvdOfKb3i1z4bY8EIMffCXUyGgknvH63YdstdpGvBhUTDW/oCEYI3nrXAphc8O5VDMdtCo91wbaU1ZYzZkUZUCr88je41fB2lZOGT03etvij6ov5us2U6iJ77rliTTACo56OgWtub3nCPG4bozC7rvT5jv4ijLAoBPfFLS7k0yhO6WSHeVjGvKUyZIjxpSZHdGuLREKbfhPueUS3ks8k47FcC9ednzVKQQ/taNv3z6wO4n8aUWuvX9Vo939sbvRz794qRHpSVfbXmsrLCGrOVkKSefemBAARhHqfvL/W1aGYZNEe/ieZHh8TKxj0KhaDV+xhLvWMbnQ3Ru3dI7/JZoiMyWrdPFd6xN1AXQ6orP1GLcQ2lvIaSiHpbqsi/PjmCs1YOSgxSeFOSPOz/mxTuJEcnOMdPGq3zaU5oftjUIZPriCfrYPqdGbGJhmbqQB91nfakk72egQm3wSpZwvxKfnvpM=
+
+branches: 
+    only:
+        - master
+
+services:
+    - docker
+
+install:
+    - cd $TRAVIS_BUILD_DIR/infra/scripts
+    - chmod +x install.sh
+    - bash install.sh terraform $tf_version
+    - bash install.sh aws $aws_version
+
+script:
+    - echo "Create S3 bucket..."
+    - cd $TRAVIS_BUILD_DIR/infra/scripts
+    - chmod +x create-bucket.sh
+    - bash create-bucket.sh
+    - echo "Deploying infrastructure..."
+    - cd $TRAVIS_BUILD_DIR/infra/cluster
+    - chmod +x terraform.sh
+    - bash terraform.sh deploy
+    - echo "Build docker image"
+    - cd $TRAVIS_BUILD_DIR/src/backend
+    - echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+    - docker build -t csheehy/imagers:trivia -f Dockerfile .
+    - docker push csheehy/imagers:trivia
+    - echo "Deploying k8s to cluster.."
+    - cd $TRAVIS_BUILD_DIR/infra/k8s
+    - chmod +x k8s.sh
+    - bash k8s.sh apply deployment.yml service.yml
+
+after_script:
+    - sleep 1m
+    - echo "Removing k8s from cluster.."
+    - cd $TRAVIS_BUILD_DIR/infra/k8s
+    - bash k8s.sh delete deployment.yml service.yml
+    - cd $TRAVIS_BUILD_DIR/infra/cluster
+    - bash terraform.sh destroy
