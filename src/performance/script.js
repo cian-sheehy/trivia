@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
+// 1. init code
 export let options = {
   vus: 1000,
   stages: [
@@ -18,8 +19,16 @@ export let options = {
   },
 };
 
+export function setup() {
+  // 2. setup code
+}
+
 export default function () {
   let res = http.get('https://httpbin.org/');
   check(res, { 'status was 200': r => r.status == 200 });
   sleep(1);
+}
+
+export function teardown(data) {
+  // 4. teardown code
 }

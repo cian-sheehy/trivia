@@ -19,6 +19,7 @@ install:
     - chmod +x install.sh
     - bash install.sh terraform $tf_version
     - bash install.sh aws $aws_version
+    - bash install.sh k8s
 
 script:
     - echo "Create S3 bucket..."
